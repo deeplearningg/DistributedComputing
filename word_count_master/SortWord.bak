@@ -1,0 +1,150 @@
+#include "cstdio" 
+#include "iostream"
+#include "string.h"
+#include "sys/time.h"
+#include <ctime>
+using namespace std;
+#define max 80
+#define HashMax (max*122)
+#define Max 1100000
+#define ChMax 64000000
+#define InWord  1
+#define OutWord 0
+#define Wanted(ch,n)  isalpha(ch) || ((ch == 39 || ch == 45) && isalpha(TotalCh[n-1]) && isalpha(TotalCh[n+1]))
+char WordsArr[Max][max];
+int  WordsCount[Max],n_WordsCount,nwords;
+int  TotalCh[ChMax];
+class RecordWords{
+	public:
+		char word[max];   
+		int position;  
+		RecordWords *brother;  
+		RecordWords(){
+			for(int i = 0;i<max;word[i++] = 0);
+			position = 0;
+			brother = NULL;
+		}
+		RecordWords(char w1[],int p1,RecordWords *b1){
+			strcpy(word,w1);
+			position = p1;
+            brother = b1;// ?
+		}
+};
+inline int HashValue(char *temp){  
+	int i,sum = 0;
+	for(i = 0;temp[i];i++)
+		sum += (int)(temp[i]); 
+    return sum - 'a';//
+}
+void CreatArr(){
+	FILE *fpr;
+    if( ( fpr=fopen("UnSortedFile.txt","r") )== NULL ){//UnSortedFile
+		cout <<"open fail\n";
+	}
+	RecordWords *WordsHash = new RecordWords[HashMax];   
+	char tempword[max]; 
+	int ch,n_tempw,state,value;
+	state = OutWord;
+	nwords = n_tempw = 0;
+	n_WordsCount = 0;  
+	for(int i = 0;i<max;tempword[i++] = 0); 
+	int i_ch = 0;
+	while((i_ch < 64000000)&& (TotalCh[i_ch++] = fgetc(fpr)) != EOF); 
+    for(int i_ch_temp = 0;i_ch_temp < i_ch;i_ch_temp++){// the total characters: i_ch
+		ch = TotalCh[i_ch_temp];
+        if( Wanted(ch,i_ch_temp) ){
+			if(ch != 45){
+				tempword[n_tempw++] = tolower(ch);
+				state = InWord;				
+			}
+		}
+        else{// now we get the word tempword
+			if(state == InWord){
+                nwords++;
+                value =  HashValue(tempword);
+                if(WordsHash[value].word[0] == '0'){
+					WordsHash[value].position = n_WordsCount;
+					strcpy(WordsHash[value].word,tempword);
+					strcpy(WordsArr[n_WordsCount],tempword);
+					WordsCount[n_WordsCount] = 1;
+					n_WordsCount++;
+				}
+
+                else{   //
+					RecordWords *u;
+					RecordWords *v;
+					for(v = &WordsHash[value];(v != NULL)&&(strcmp(tempword,v->word) != 0);v = v->brother)
+						u = v;
+                    if(v == NULL){   //
+						v = new RecordWords(tempword,n_WordsCount,NULL);
+						u->brother = v;
+						strcpy(WordsArr[n_WordsCount],tempword);  
+						WordsCount[n_WordsCount] = 1;
+						n_WordsCount++;
+					}
+                    else{    //
+						WordsCount[v->position] ++;
+					}
+				}
+
+                for(int i = 0;i<max;tempword[i++] = 0);  //
+				n_tempw = 0;
+				state = OutWord;
+			}			
+		}
+	} 
+	fclose(fpr);	
+}
+inline void SwapWord(int num1,int num2){   //
+	char cword[max];
+	strcpy(cword,WordsArr[num1]);
+	strcpy(WordsArr[num1],WordsArr[num2]);
+	strcpy(WordsArr[num2],cword);
+}
+inline bool Comp(int n1,int temp,char wtemp[]){   //
+	if(WordsCount[n1] > temp)
+		return true;   
+	if(WordsCount[n1] < temp)
+		return false;  
+	int i ;
+	for(i = 0;(i<max)&&(WordsArr[n1][i] == wtemp[i]);i++);
+	if(WordsArr[n1][i] < wtemp[i]) return false;
+	else return true;
+}
+int Partition(int left,int right){      
+	int l = left;
+	int r = right;
+	int temp = WordsCount[r];
+	char wtemp[max];
+	strcpy(wtemp,WordsArr[r]);
+	while(l != r){
+		while(!Comp(l,temp,wtemp) && r > l)
+			l++;
+		if(l < r){
+			WordsCount[r] = WordsCount[l];
+			strcpy(WordsArr[r],WordsArr[l]);
+			r--;
+		}
+		while(Comp(r,temp,wtemp) && r > l) 
+			r--;
+		if(l<r){
+			WordsCount[l] = WordsCount[r];
+			strcpy(WordsArr[l] , WordsArr[r]);
+			l++;
+		}
+	}
+	WordsCount[l] = temp;
+	strcpy(WordsArr[l] , wtemp);
+	return l;
+}
+void QuickSort(int left,int right){    //
+	if(right <= left ) return;
+    int pivot = (left + right)/2; //
+	int itemp = WordsCount[pivot];
+	WordsCount[pivot] = WordsCount[right];
+	WordsCount[right] = itemp;
+	SwapWord(pivot,right);
+	pivot = Partition(left,right);
+	QuickSort(left,pivot-1);
+	QuickSort(pivot+1,right);	
+}
